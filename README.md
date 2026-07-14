@@ -70,6 +70,23 @@ View kernel messages:
 ```bash
 dmesg | tail
 ```
+## Driver Loaded
+
+The module registers the character device, allocates a major number dynamically, and creates `/dev/mychardev`.
+
+![Driver Loaded](Screenshots/driver_loaded.png)
+
+## Write Operation
+
+The user-space application writes data to the kernel buffer using the driver's `write()` callback.
+
+![Write Operation](Screenshots/write_operation.png)
+
+## Read Operation
+
+The stored data is copied back to user space through the driver's `read()` callback.
+
+![Read Operation](screenshots/read_operation.png)
 
 This project helped me understand the basic lifecycle of a Linux character driver, how a device is registered with the kernel, how a device node is created, and how data is exchanged safely between user space and kernel space.
 
