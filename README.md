@@ -1,36 +1,120 @@
 # Linux Character Driver
 
-This is my first Linux device driver project.
+A Linux character device driver implemented using the `cdev` framework.
 
-I recently started learning Linux device driver development, and this project is my first step towards understanding how device drivers work inside the Linux kernel. Instead of only reading about the concepts, I wanted to build a simple character driver from scratch and understand the complete flow from user space to kernel space.
+The driver creates a character device (`/dev/mychardev`) and allows user-space applications to communicate with the kernel using standard file operations (`read()`, `write()`) and custom `ioctl()` commands.
 
-In this project, I implemented a basic character driver using the **cdev** framework. The driver creates a device node (`/dev/mychardev`) and supports basic **read** and **write** operations using a kernel buffer. I also wrote simple user-space applications to test the driver.
+The project also includes user-space applications to test all supported driver operations.
 
-## What this project covers
+---
 
-* Character device registration
-* Dynamic major and minor number allocation
-* Creating a device node using `class_create()` and `device_create()`
-* Implementing `open()`, `read()`, `write()` and `release()` callbacks
-* Data transfer between user space and kernel space using `copy_from_user()` and `copy_to_user()`
-* Basic user-space applications for testing the driver
+# Architecture
 
-## Project Structure
+```text
+                    +----------------------------+
+                    |     User Applications      |
+                    |----------------------------|
+                    |  write_app                 |
+                    |  read_app                  |
+                    |  ioctl_app                 |
+                    +-------------+--------------+
+                                  |
+                    read / write / ioctl
+                                  |
+                                  v
++----------------------------------------------------------------+
+|                    Linux Character Driver                       |
+|----------------------------------------------------------------|
+| File Operations                                                 |
+|   • open()                                                      |
+|   • read()                                                      |
+|   • write()                                                     |
+|   • unlocked_ioctl()                                            |
+|   • release()                                                   |
+|                                                                |
+| Buffer Management                                               |
+|   • Dynamic Kernel Buffer                                       |
+|   • Automatic Buffer Resizing (krealloc)                        |
+|   • Mutex Synchronization                                       |
+|                                                                |
+| ioctl Commands                                                  |
+|   • CLEAR_BUFFER                                                |
+|   • GET_BUFFER_SIZE                                             |
+|   • GET_DATA_SIZE                                               |
+|   • RESIZE_BUFFER                                               |
++----------------------------------------------------------------+
+                                  |
+                                  v
+                    +----------------------------+
+                    |    Dynamic Kernel Buffer   |
+                    +----------------------------+
+```
+
+---
+
+# Features
+
+- Character device registration using the `cdev` framework
+- Dynamic major and minor number allocation
+- Automatic device node creation using `class_create()` and `device_create()`
+- File operations
+  - `open()`
+  - `read()`
+  - `write()`
+  - `release()`
+  - `unlocked_ioctl()`
+- Dynamic kernel buffer using `krealloc()`
+- Automatic buffer resizing
+- Thread-safe access using mutexes
+- Safe communication between user space and kernel space using:
+  - `copy_from_user()`
+  - `copy_to_user()`
+- User-space applications for testing
+
+---
+
+# Supported ioctl Commands
+
+| Command | Description |
+|----------|-------------|
+| `CLEAR_BUFFER` | Clears the kernel buffer |
+| `GET_BUFFER_SIZE` | Returns the current kernel buffer capacity |
+| `GET_DATA_SIZE` | Returns the amount of valid data stored |
+| `RESIZE_BUFFER` | Resizes the kernel buffer |
+
+---
+
+# Project Structure
 
 ```text
 linux-character-driver/
 │
 ├── Makefile
 ├── README.md
+│
+├── include/
+│   └── mychardev_ioctl.h
+│
 ├── src/
 │   └── char_driver.c
-└── apps/
-    ├── Makefile
-    ├── write_app.c
-    └── read_app.c
+│
+├── apps/
+│   ├── Makefile
+│   ├── write_app.c
+│   ├── read_app.c
+│   └── ioctl_app.c
+│
+└── screenshots/
+    ├── driver_load.png
+    ├── write.png
+    ├── read.png
+    └── ioctl.png
+
 ```
 
-## How to Build
+---
+
+# Build
 
 Build the kernel module:
 
@@ -45,7 +129,9 @@ cd apps
 make
 ```
 
-## Testing
+---
+
+# Usage
 
 Load the driver:
 
@@ -53,16 +139,28 @@ Load the driver:
 sudo insmod char_driver.ko
 ```
 
+Verify that the module is loaded:
+
+```bash
+lsmod | grep char_driver
+```
+
 Write data to the driver:
 
 ```bash
-./write_app
+sudo ./write_app
 ```
 
 Read data from the driver:
 
 ```bash
-./read_app
+sudo ./read_app
+```
+
+Test the ioctl interface:
+
+```bash
+sudo ./ioctl_app
 ```
 
 View kernel messages:
@@ -70,36 +168,47 @@ View kernel messages:
 ```bash
 dmesg | tail
 ```
+
+Unload the driver:
+
+```bash
+sudo rmmod char_driver
+```
+
+---
+
+# Screenshots
+
 ## Driver Loaded
 
-The module registers the character device, allocates a major number dynamically, and creates `/dev/mychardev`.
+![Driver Loaded](screenshots/driver_load.png)
 
-![Driver Loaded](Screenshots/driver_loaded.png)
+---
 
 ## Write Operation
 
-The user-space application writes data to the kernel buffer using the driver's `write()` callback.
+![Write Operation](screenshots/write.png)
 
-![Write Operation](Screenshots/write_operation.png)
+---
 
 ## Read Operation
 
-The stored data is copied back to user space through the driver's `read()` callback.
+![Read Operation](screenshots/read.png)
 
-![Read Operation](screenshots/read_operation.png)
+---
 
-This project helped me understand the basic lifecycle of a Linux character driver, how a device is registered with the kernel, how a device node is created, and how data is exchanged safely between user space and kernel space.
+## ioctl Operations
 
-This repository will continue to evolve as I learn more about Linux device drivers. Some of the features I plan to add are:
+![ioctl Operations](screenshots/ioctl.png)
 
-* Better error handling
-* Dynamic memory allocation
-* `ioctl()` support
-* Synchronization using mutexes
-* Additional documentation and diagrams
+---
 
+# Driver Workflow
 
-
-
-
-
+1. Load the kernel module using `insmod`.
+2. The driver registers a character device and creates `/dev/mychardev`.
+3. User-space applications open the device file.
+4. Data is transferred between user space and the kernel using `read()` and `write()`.
+5. Device-specific operations are performed using `ioctl()`.
+6. The driver manages the kernel buffer using dynamic memory allocation and mutex protection.
+7. The module is unloaded using `rmmod`.
