@@ -1,3 +1,4 @@
+#include "../include/mychardev_ioctl.h"
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/fs.h>
@@ -160,6 +161,102 @@ out:
 }
 
 /*----------------------------------------------------------*/
+static long driver_ioctl(struct file *file,
+                         unsigned int cmd,
+                         unsigned long arg)
+{
+    long ret = 0;
+    size_t new_size;
+    char *temp;
+    mutex_lock(&buffer_lock);
+
+    switch (cmd)
+    {
+        case CLEAR_BUFFER:
+
+            data_size = 0;
+
+            if (kernel_buffer)
+                kernel_buffer[0] = '\0';
+
+            pr_info("mychardev: Buffer cleared\n");
+            break;
+	case GET_BUFFER_SIZE:
+
+        if (copy_to_user((void __user *)arg,
+                         &buffer_capacity,
+                         sizeof(buffer_capacity)))
+        {
+            ret = -EFAULT;
+            goto out;
+        }
+
+        pr_info("mychardev: Buffer Capacity = %zu\n",
+                buffer_capacity);
+        break;
+	case GET_DATA_SIZE:
+
+    if (copy_to_user((void __user *)arg,
+                     &data_size,
+                     sizeof(data_size)))
+    {
+        ret = -EFAULT;
+        goto out;
+    }
+
+    pr_info("mychardev: Data Size = %zu\n",
+            data_size);
+
+    break;
+    case RESIZE_BUFFER:
+
+    if (copy_from_user(&new_size,
+                       (void __user *)arg,
+                       sizeof(new_size)))
+    {
+        ret = -EFAULT;
+        goto out;
+    }
+
+    if (new_size == 0)
+    {
+        ret = -EINVAL;
+        goto out;
+    }
+
+    temp = krealloc(kernel_buffer,
+                    new_size,
+                    GFP_KERNEL);
+
+    if (!temp)
+    {
+        ret = -ENOMEM;
+        goto out;
+    }
+
+    kernel_buffer = temp;
+    buffer_capacity = new_size;
+
+    if (data_size > buffer_capacity)
+        data_size = buffer_capacity;
+
+    pr_info("mychardev: Buffer resized to %zu bytes\n",
+            buffer_capacity);
+
+    break;
+
+        default:
+            ret = -EINVAL;
+            pr_err("mychardev: Invalid ioctl command\n");
+            break;
+    }
+    out:
+
+    mutex_unlock(&buffer_lock);
+
+    return ret;
+}
+/*---------------------------------------------------------*/
 
 static const struct file_operations fops = {
     .owner   = THIS_MODULE,
@@ -167,6 +264,7 @@ static const struct file_operations fops = {
     .release = driver_release,
     .read    = driver_read,
     .write   = driver_write,
+    .unlocked_ioctl = driver_ioctl,
 };
 
 /*----------------------------------------------------------*/
