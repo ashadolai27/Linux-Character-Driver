@@ -104,7 +104,7 @@ linux-character-driver/
 │   ├── read_app.c
 │   └── ioctl_app.c
 │
-└── screenshots/
+└── Screenshots/
     ├── driver_load.png
     ├── write.png
     ├── read.png
@@ -177,29 +177,29 @@ sudo rmmod char_driver
 
 ---
 
-# Screenshots
+# Output Screenshots
 
 ## Driver Loaded
 
-![Driver Loaded](screenshots/driver_load.png)
+![Driver Loaded](Screenshots/driver_load.png)
 
 ---
 
 ## Write Operation
 
-![Write Operation](screenshots/write.png)
+![Write Operation](Screenshots/write.png)
 
 ---
 
 ## Read Operation
 
-![Read Operation](screenshots/read.png)
+![Read Operation](Screenshots/read.png)
 
 ---
 
 ## ioctl Operations
 
-![ioctl Operations](screenshots/ioctl.png)
+![ioctl Operations](Screenshots/ioctl.png)
 
 ---
 
